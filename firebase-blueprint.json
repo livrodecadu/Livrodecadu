@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID" },
+        "email": { "type": "string", "format": "email", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile picture URL" },
+        "role": { "type": "string", "enum": ["admin", "business", "user"], "description": "User role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation date" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Information about a local company or tourist spot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique business ID" },
+        "ownerUid": { "type": "string", "description": "Owner's user ID" },
+        "name": { "type": "string", "description": "Business name" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "category": { "type": "string", "enum": ["turismo", "gastronomia", "servicos", "comercio"], "description": "Business category" },
+        "isPaid": { "type": "boolean", "description": "Whether it's a paid attraction" },
+        "priceRange": { "type": "string", "description": "Price range description" },
+        "address": { "type": "string", "description": "Physical address" },
+        "location": { "type": "object", "description": "Geographic coordinates" },
+        "contact": { "type": "string", "description": "Contact info (phone/whatsapp)" },
+        "curiosities": { "type": "array", "items": { "type": "string" }, "description": "Fun facts or curiosities" },
+        "mainImage": { "type": "string", "description": "Main profile image URL" },
+        "rating": { "type": "number", "description": "Average rating" },
+        "reviewCount": { "type": "number", "description": "Total number of reviews" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
+      },
+      "required": ["id", "ownerUid", "name", "category"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Short video or image post from a business",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique story ID" },
+        "businessId": { "type": "string", "description": "ID of the business that posted" },
+        "mediaUrl": { "type": "string", "description": "URL of the video or image" },
+        "mediaType": { "type": "string", "enum": ["video", "image"], "description": "Type of media" },
+        "caption": { "type": "string", "description": "Optional caption" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Post date" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Expiration date" }
+      },
+      "required": ["id", "businessId", "mediaUrl", "mediaType", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User feedback for a business",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique review ID" },
+        "businessId": { "type": "string", "description": "ID of the business being reviewed" },
+        "userUid": { "type": "string", "description": "ID of the user who wrote the review" },
+        "userName": { "type": "string", "description": "Name of the user" },
+        "userPhoto": { "type": "string", "description": "Photo of the user" },
+        "rating": { "type": "number", "description": "Rating from 1 to 5" },
+        "comment": { "type": "string", "description": "Review text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Review date" }
+      },
+      "required": ["id", "businessId", "userUid", "rating", "createdAt"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Reservation at a business",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique booking ID" },
+        "businessId": { "type": "string", "description": "ID of the business" },
+        "userUid": { "type": "string", "description": "ID of the user" },
+        "date": { "type": "string", "format": "date", "description": "Booking date" },
+        "time": { "type": "string", "format": "time", "description": "Booking time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"], "description": "Booking status" },
+        "notes": { "type": "string", "description": "User notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
+      },
+      "required": ["id", "businessId", "userUid", "date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/businesses/{businessId}": { "schema": "Business", "description": "Business profiles" },
+    "/stories/{storyId}": { "schema": "Story", "description": "Business stories" },
+    "/reviews/{reviewId}": { "schema": "Review", "description": "Business reviews" },
+    "/bookings/{bookingId}": { "schema": "Booking", "description": "User bookings" }
+  }
+}

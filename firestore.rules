@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, role, createdAt
+    //
+    // Collection: businesses
+    // Fields: id, ownerUid, name, description, category, isPaid, priceRange, address, location, contact, curiosities, mainImage, rating, reviewCount, createdAt
+    //
+    // Collection: stories
+    // Fields: id, businessId, mediaUrl, mediaType, caption, createdAt, expiresAt
+    //
+    // Collection: reviews
+    // Fields: id, businessId, userUid, userName, userPhoto, rating, comment, createdAt
+    //
+    // Collection: bookings
+    // Fields: id, businessId, userUid, date, time, status, notes, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "livrodecadu@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isBusinessOwner(businessId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerUid == request.auth.uid;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'favorites']) &&
+             data.uid is string && data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'business', 'user'];
+    }
+
+    function isValidBusiness(data) {
+      let allowedFields = ['id', 'ownerUid', 'name', 'description', 'category', 'isPaid', 'priceRange', 'address', 'location', 'contact', 'curiosities', 'mainImage', 'rating', 'reviewCount', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             data.ownerUid is string && data.name is string && data.name.size() < 100 &&
+             data.category in ['turismo', 'gastronomia', 'servicos', 'comercio'] &&
+             (!('id' in data) || data.id is string) &&
+             (!('location' in data) || (data.location is map && data.location.lat is number && data.location.lng is number));
+    }
+
+    function isValidStory(data) {
+      let allowedFields = ['id', 'businessId', 'mediaUrl', 'mediaType', 'caption', 'createdAt', 'expiresAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             data.businessId is string && data.mediaUrl is string &&
+             data.mediaType in ['video', 'image'] &&
+             (!('id' in data) || data.id is string);
+    }
+
+    function isValidReview(data) {
+      let allowedFields = ['id', 'businessId', 'userUid', 'userName', 'userPhoto', 'rating', 'comment', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             data.businessId is string && data.userUid is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             (!('id' in data) || data.id is string);
+    }
+
+    function isValidBooking(data) {
+      let allowedFields = ['id', 'businessId', 'userUid', 'date', 'time', 'status', 'notes', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             data.businessId is string && data.userUid is string &&
+             data.status in ['pending', 'confirmed', 'cancelled'] &&
+             (!('id' in data) || data.id is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /businesses/{businessId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidBusiness(request.resource.data) && (request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update: if (isBusinessOwner(businessId) || isAdmin()) && isValidBusiness(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /stories/{storyId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidStory(request.resource.data) && (isBusinessOwner(request.resource.data.businessId) || isAdmin());
+      allow update: if (isBusinessOwner(resource.data.businessId) || isAdmin()) && isValidStory(request.resource.data);
+      allow delete: if (isBusinessOwner(resource.data.businessId) || isAdmin());
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidReview(request.resource.data) && request.resource.data.userUid == request.auth.uid;
+      allow update: if (isOwner(resource.data.userUid) || isAdmin()) && isValidReview(request.resource.data);
+      allow delete: if (isOwner(resource.data.userUid) || isAdmin());
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userUid) || isBusinessOwner(resource.data.businessId) || isAdmin());
+      allow create: if isAuthenticated() && isValidBooking(request.resource.data) && request.resource.data.userUid == request.auth.uid;
+      allow update: if isAuthenticated() && (isOwner(resource.data.userUid) || isBusinessOwner(resource.data.businessId) || isAdmin()) && isValidBooking(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}

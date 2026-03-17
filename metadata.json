@@ -1,0 +1,9 @@
+{
+  "name": "Guia Local Itaúna",
+  "description": "O guia definitivo de Itaúna, MG. Descubra pontos turísticos, gastronomia e o comércio local da 'Cidade Educativa'.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
